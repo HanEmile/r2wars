@@ -73,10 +73,13 @@ func main() {
 		// clear the screen
 		registers := stepIn(r2p)
 
+		// Print the users screen
 		fmt.Println(user(r2p, i, registers, config))
 
+		// switch players
 		i = switchPlayer(i, config)
 
+		// sleep
 		time.Sleep(2 * time.Second)
 	}
 
