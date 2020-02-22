@@ -27,8 +27,8 @@ func user(r2p *r2pipe.Pipe, id int, registers string, config Config) string {
 	res += "+++\n"
 	res += fmt.Sprintf("%s\n", r2cmd(r2p, fmt.Sprintf("%s %d @ 0\n", "prx", config.Memsize)))
 	res += "+++\n"
-	//res += r2cmd("pxw 32 @r:SP") + "\n"
-	//res += r2cmd("pD %d @ %s"%(size[uidx], orig[uidx]))
+	res += fmt.Sprintf("%s\n", r2cmd("pxw 32 @r:SP"))
+	res += fmt.Sprintf("%s\n", r2cmd("pD %d @ %s"%(size[uidx], orig[uidx]))
 
 	return res
 }
