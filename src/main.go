@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -45,10 +46,17 @@ func main() {
 		address := randomOffsets[bot]
 		placeBot(r2p, config.Bots[bot], address)
 
+		// store the initial address of the bot int the struct field
+		config.Bots[bot].Addr = address
+
 		// define the instruction point and the stack pointer
 		log.Printf("[i] setting up the PC and SP for bot %d", bot)
 		_ = r2cmd(r2p, fmt.Sprintf("aer PC=%d", address))
 		_ = r2cmd(r2p, fmt.Sprintf("aer SP=SP+%d", address))
+
+		// dump the registers of the user for being able to switch inbetween them
+		initialRegisers := strings.Replace(r2cmd(r2p, "aerR"), "\n", ";", -1)
+		config.Bots[bot].Regs = initialRegisers
 
 		// print the instruction point and the stack pointer
 		botStackPointer := r2cmd(r2p, "aerR~esp[2]")
@@ -70,17 +78,16 @@ func main() {
 	i := 0
 	for true {
 
-		// clear the screen
+		// Step, then print the users registers
 		registers := stepIn(r2p)
-
-		// Print the users screen
+		config.Bots[i].Regs = registers
 		fmt.Println(user(r2p, i, registers, config))
 
 		// switch players
-		i = switchPlayer(i, config)
+		i = switchPlayer(r2p, i, config)
 
-		// sleep
-		time.Sleep(2 * time.Second)
+		// sleepti
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	r2p.Close()
