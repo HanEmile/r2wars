@@ -27,4 +27,12 @@ type Bot struct {
 
 	// Source defines the source of the bot after being compiled with rasm2
 	Source string
+
+	// Addr defines the initial address the bot is placed at
+	Addr int
+
+	// Regs defines the state of the registers of the bot
+	// It is used to store the registers after each round and restore them in the
+	// next round when the bot's turn has come
+	Regs string
 }
