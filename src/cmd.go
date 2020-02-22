@@ -8,8 +8,10 @@ import (
 
 func r2cmd(r2p *r2pipe.Pipe, input string) string {
 
-	// print the command for debugging purposes
-	log.Printf("> %s", input)
+	if *verbose == true {
+		// print the command for debugging purposes
+		log.Printf("> %s", input)
+	}
 
 	// send a command
 	buf1, err := r2p.Cmd(input)
