@@ -24,21 +24,23 @@ func switchPlayer(r2p *r2pipe.Pipe, currentPlayer int, config *Config) int {
 	return nextPlayer
 }
 
-func user(r2p *r2pipe.Pipe, id int, registers string, config Config) string {
-	var res string
+func arena(r2p *r2pipe.Pipe, config *Config, id, gen int) string {
+	var res string = ""
 
+	// clear the screen
 	res += "\x1b[2J\x1b[0;0H"
-	res += fmt.Sprintf("USER %d\n", id)
-	res += fmt.Sprintf("%s\n", r2cmd(r2p, "aer"))
-	res += "+++\n"
-	//res += fmt.Sprintf("%s\n", r2cmd(r2p, fmt.Sprintf("%s %d @ 0\n", "prc=f", config.Memsize)))
-	res += fmt.Sprintf("%s\n", r2cmd(r2p, fmt.Sprintf("%s %d @ 0\n", "prx", config.Memsize)))
-	res += "+++\n"
-	res += fmt.Sprintf("%s\n", r2cmd(r2p, "pxw 32 @r:SP"))
+	// res += fmt.Sprintf("%s\n", r2cmd(r2p, "?eg 0 0"))
 
-	r2command := fmt.Sprintf("pd %d @ %d", len(config.Bots[id].Source)/2, config.Bots[id].Addr)
-	r2cmdString := r2cmd(r2p, r2command)
-	res += fmt.Sprintf("%s\n", r2cmdString)
+	// print some general information such as the current user and the round the
+	// game is in
+	ip := fmt.Sprintf("%s\n", r2cmd(r2p, "aer~eip"))
+	res += fmt.Sprintf("Round: %d \t\t User: %d \t\t ip: %s\n", gen, id, ip)
+
+	// print the memory space
+	res += fmt.Sprintf("%s\n", r2cmd(r2p, "pxa 0x400 @ 0"))
+	// res += fmt.Sprintf("%s\n", r2cmd(r2p, fmt.Sprintf("pd 0x10 @ %d", config.Bots[id].Addr)))
+
+	// res += fmt.Sprintf("%s\n", r2cmd(r2p, "prc 0x200 @ 0"))
 
 	return res
 }
