@@ -36,7 +36,8 @@ func buildBot(i int, config *Config) {
 	//
 	// This uses the given architecture, the given bitness and the given path in
 	// rasm2 to compile the bot
-	radareCommand := fmt.Sprintf("rasm2 -a %s -b %d -f %s", config.Arch, config.Bits, path)
+	botPath := config.Bots[i].Path
+	radareCommand := fmt.Sprintf("rasm2 -a %s -b %d -f %s", config.Arch, config.Bits, botPath)
 	botSource := r2cmd(r2p1, radareCommand)
 
 	bot := Bot{
