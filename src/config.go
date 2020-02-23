@@ -56,3 +56,20 @@ func parseConfig() Config {
 
 	return config
 }
+
+// define bots defines the bots given via command line arguments
+func defineBots(config *Config) {
+
+	logrus.Info("Defining the bots")
+
+	// define a list of bots by parsing the command line arguments one by one
+	var bots []Bot
+	for i := 0; i < config.AmountOfBots; i++ {
+		bot := Bot{
+			Path: flag.Arg(i),
+		}
+		bots = append(bots, bot)
+	}
+
+	config.Bots = bots
+}
