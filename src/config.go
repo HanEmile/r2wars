@@ -1,16 +1,57 @@
 package main
 
-import "flag"
+import (
+	"flag"
 
+	"github.com/sirupsen/logrus"
+)
+
+// parseConfig parses the config needed to start the game
 func parseConfig() Config {
-	verbose = flag.Bool("v", false, "verbose output")
+
+	// bot configs
+	arch := flag.String("arch", "x86", "bot architecture (mips|arm|x86)")
+	bits := flag.Int("bits", 32, "bot bitness (8|16|32|64)")
+	maxProgSize := flag.Int("maxProgSize", 64, "the maximum bot size")
+	memPerBot := flag.Int("memPerBot", 512, "the amount of memory each bot should add to the arena")
+	gameRoundDuration := flag.Duration("t", 250, "The duration of a round")
+
+	v := flag.Bool("v", false, "info")
+	vv := flag.Bool("vv", false, "debug")
+	vvv := flag.Bool("vvv", false, "trace")
+
+	// parse the flags
 	flag.Parse()
 
+	if *v == true {
+		logrus.SetLevel(logrus.InfoLevel)
+	} else if *vv == true {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else if *vvv == true {
+		logrus.SetLevel(logrus.TraceLevel)
+	} else {
+		logrus.SetLevel(logrus.WarnLevel)
+	}
+
+	// parse all trailing command line arguments as path to bot sourcecode
+	amountOfBots := flag.NArg()
+
+	memsize := amountOfBots * *memPerBot
+
+	logrus.WithFields(logrus.Fields{
+		"mem per bot":  *memPerBot,
+		"amountOfBots": amountOfBots,
+		"memsize":      memsize,
+	}).Infof("Loaded config")
+
+	// define a config to return
 	config := Config{
-		Arch:        "x86",
-		Bits:        32,
-		Memsize:     1024,
-		MaxProgSize: 64,
+		Arch:              *arch,
+		Bits:              *bits,
+		Memsize:           memsize,
+		MaxProgSize:       *maxProgSize,
+		AmountOfBots:      amountOfBots,
+		GameRoundDuration: *gameRoundDuration,
 	}
 
 	return config
