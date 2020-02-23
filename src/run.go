@@ -15,13 +15,11 @@ func stepIn(r2p *r2pipe.Pipe) {
 	_ = r2cmd(r2p, "aes")
 }
 
-func switchPlayer(r2p *r2pipe.Pipe, currentPlayer int, config Config) int {
+// switchPlayer returns the id of the next Player
+func switchPlayer(r2p *r2pipe.Pipe, currentPlayer int, config *Config) int {
 
 	// calculate the index of the nextPlayer
-	nextPlayer := (currentPlayer + 1) % len(config.Bots)
-
-	// restore the registers to the state of the next bot
-	r2cmd(r2p, config.Bots[nextPlayer].Regs)
+	nextPlayer := (currentPlayer + 1) % config.AmountOfBots
 
 	return nextPlayer
 }
