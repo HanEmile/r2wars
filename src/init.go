@@ -40,13 +40,7 @@ func buildBot(i int, config *Config) {
 	radareCommand := fmt.Sprintf("rasm2 -a %s -b %d -f %s", config.Arch, config.Bits, botPath)
 	botSource := r2cmd(r2p1, radareCommand)
 
-	bot := Bot{
-		Path:   path,
-		Source: botSource,
-	}
-
-	// return the bot
-	return bot
+	config.Bots[i].Source = botSource
 }
 
 // init initializes the arena
