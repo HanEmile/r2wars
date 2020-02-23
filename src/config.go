@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -14,7 +15,7 @@ func parseConfig() Config {
 	bits := flag.Int("bits", 32, "bot bitness (8|16|32|64)")
 	maxProgSize := flag.Int("maxProgSize", 64, "the maximum bot size")
 	memPerBot := flag.Int("memPerBot", 512, "the amount of memory each bot should add to the arena")
-	gameRoundDuration := flag.Duration("t", 250, "The duration of a round")
+	gameRoundDuration := flag.Duration("t", 250*time.Millisecond, "The duration of a round")
 
 	v := flag.Bool("v", false, "info")
 	vv := flag.Bool("vv", false, "debug")
