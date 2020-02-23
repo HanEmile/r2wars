@@ -186,5 +186,45 @@ func genRandomOffsets(config *Config) {
 
 // place the bot in the arena at the given address
 func placeBot(r2p *r2pipe.Pipe, bot Bot, address int) {
-	_ = r2cmd(r2p, fmt.Sprintf("wx %s @ %d", bot, address))
+	_ = r2cmd(r2p, fmt.Sprintf("wx %s @ %d", bot.Source, address))
+}
+
+func placeBots(r2p *r2pipe.Pipe, config *Config) {
+
+	logrus.Info("Placing the bots in the arena")
+
+	// place each bot in the arena
+	for bot := 0; bot < len(config.Bots); bot++ {
+
+		// get the address where the bot should be placed
+		address := config.RandomOffsets[bot]
+
+		// Place the bot in the arena
+		logrus.Debugf("[i] Placing bot %d at %d", bot, address)
+		placeBot(r2p, config.Bots[bot], address)
+
+		logrus.Debugf("\n%s", r2cmd(r2p, fmt.Sprintf("pd 0x8 @ %d", address)))
+
+		// store the initial address of the bot in the according struct field
+		config.Bots[bot].Addr = address
+
+		// define the instruction point and the stack pointer
+		_ = r2cmd(r2p, fmt.Sprintf("aer PC=%d", config.Bots[bot].Addr))
+		_ = r2cmd(r2p, fmt.Sprintf("aer SP=SP+%d", config.Bots[bot].Addr))
+
+		// dump the registers of the bot for being able to switch inbetween them
+		// This is done in order to be able to play one step of each bot at a time,
+		// but sort of in parallel
+		initialRegisers := strings.Replace(r2cmd(r2p, "aerR"), "\n", ";", -1)
+		config.Bots[bot].Regs = initialRegisers
+	}
+}
+
+func defineErrors(r2p *r2pipe.Pipe) {
+	// handle errors in esil
+	_ = r2cmd(r2p, "e cmd.esil.todo=f theend=1")
+	_ = r2cmd(r2p, "e cmd.esil.trap=f theend=1")
+	_ = r2cmd(r2p, "e cmd.esil.intr=f theend=1")
+	_ = r2cmd(r2p, "e cmd.esil.ioer=f theend=1")
+	_ = r2cmd(r2p, "f theend=0")
 }
