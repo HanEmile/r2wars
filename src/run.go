@@ -44,3 +44,41 @@ func arena(r2p *r2pipe.Pipe, config *Config, id, gen int) string {
 
 	return res
 }
+
+// runGame actually runs the game (surprise!)
+func runGame(r2p *r2pipe.Pipe, config *Config) {
+
+	// start the competition
+	var botid int = 0
+	var round int = 0
+	for true {
+
+		// load the registers
+		r2cmd(r2p, config.Bots[botid].Regs)
+
+		// Step
+		stepIn(r2p)
+
+		// store the regisers
+		registers := r2cmd(r2p, "aerR")
+		registersStripped := strings.Replace(registers, "\n", ";", -1)
+		config.Bots[botid].Regs = registersStripped
+
+		logrus.Info(arena(r2p, config, botid, round))
+
+		if dead(r2p, botid) == true {
+			logrus.Warnf("DEAD (round %d)", round)
+			os.Exit(1)
+		}
+
+		// switch players, if the new botid is 0, a new round has begun
+		botid = switchPlayer(r2p, botid, config)
+		if botid == 0 {
+			round++
+		}
+
+		// sleep only a partial of the total round time, as a round is made up of
+		// the movements of multiple bots
+		time.Sleep(config.GameRoundDuration / time.Duration(config.AmountOfBots))
+	}
+}
