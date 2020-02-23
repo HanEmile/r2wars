@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/radare/r2pipe-go"
+	"github.com/sirupsen/logrus"
 )
 
 // StepIn steps in and stores the state of the registers for the given bot
