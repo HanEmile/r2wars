@@ -2,16 +2,28 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	r2pipe "github.com/radare/r2pipe-go"
+	"github.com/sirupsen/logrus"
 )
 
+func buildBots(config *Config) {
+
+	logrus.Info("Building all bots")
+
+	// build all the bots
+	for i := 0; i < config.AmountOfBots; i++ {
+		buildBot(i, config)
+	}
+}
+
 // buildBot builds the bot located at the given path.
-func buildBot(config Config, path string) Bot {
-	log.Println("[+] Building the bot")
+func buildBot(i int, config *Config) {
+
+	logrus.Debugf("Building bot %d", i)
 
 	// open radare without input for building the bot
 	r2p1, err := r2pipe.NewPipe("--")
