@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 // Config defines the meta config
 type Config struct {
 
@@ -17,6 +19,15 @@ type Config struct {
 
 	// Bots defines a list of bots to take part in the battle
 	Bots []Bot
+
+	// AmountOfBots defines the amount of bots taking part in the tournament
+	AmountOfBots int
+
+	// RandomOffsets defines the offset in memory where the bots should be placed
+	RandomOffsets []int
+
+	// GameRoundTime defines the length of a gameround
+	GameRoundDuration time.Duration
 }
 
 // Bot defines a bot
