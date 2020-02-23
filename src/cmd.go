@@ -1,17 +1,13 @@
 package main
 
 import (
-	"log"
-
 	"github.com/radare/r2pipe-go"
+	"github.com/sirupsen/logrus"
 )
 
 func r2cmd(r2p *r2pipe.Pipe, input string) string {
 
-	if *verbose == true {
-		// print the command for debugging purposes
-		log.Printf("> %s", input)
-	}
+	logrus.Tracef("> %s", input)
 
 	// send a command
 	buf1, err := r2p.Cmd(input)
