@@ -62,18 +62,29 @@ func initArena(config *Config) *r2pipe.Pipe {
 	_ = r2cmd(r2p, fmt.Sprintf("e asm.bits = %d", config.Bits))
 
 	// enable colors
-	_ = r2cmd(r2p, "e scr.color = true")
+	// _ = r2cmd(r2p, "e scr.color = 0")
+	_ = r2cmd(r2p, "e scr.color = 3")
+	_ = r2cmd(r2p, "e scr.color.args = true")
+	_ = r2cmd(r2p, "e scr.color.bytes = true")
+	_ = r2cmd(r2p, "e scr.color.grep = true")
+	_ = r2cmd(r2p, "e scr.color.ops = true")
+	_ = r2cmd(r2p, "e scr.bgfill = true")
+	_ = r2cmd(r2p, "e scr.color.pipe = true")
+	_ = r2cmd(r2p, "e scr.utf8 = true")
 
-	log.Println("[+] Initializing the ESIL VM")
+	// hex column width
+	_ = r2cmd(r2p, "e hex.cols = 32")
+
 	// initialize ESIL VM state
+	logrus.Debug("Initializing the ESIL VM")
 	_ = r2cmd(r2p, "aei")
 
 	// initialize ESIL VM stack
+	logrus.Debug("Initializing the ESIL Stack")
 	_ = r2cmd(r2p, "aeim")
 
 	// return the pipe
 	return r2p
-
 }
 
 // getRandomOffsets returns random offsets for all bots
