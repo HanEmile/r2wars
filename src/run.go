@@ -11,7 +11,7 @@ import (
 )
 
 // StepIn steps in and stores the state of the registers for the given bot
-func stepIn(r2p *r2pipe.Pipe) string {
+func stepIn(r2p *r2pipe.Pipe) {
 	_ = r2cmd(r2p, "aes")
 
 	// store the regisers
