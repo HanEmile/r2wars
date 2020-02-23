@@ -44,16 +44,18 @@ func buildBot(i int, config *Config) {
 }
 
 // init initializes the arena
-func initArena(config Config) *r2pipe.Pipe {
-	log.Println("[+] Initializing the arena")
-	log.Printf("[ ] Allocating %d bytes of memory...", config.Memsize)
+func initArena(config *Config) *r2pipe.Pipe {
 
-	// alocate memory
+	logrus.Info("Initializing the arena")
+	logrus.Debugf("Allocating %d bytes of memory...", config.Memsize)
+
+	// allocate memory
 	r2p, err := r2pipe.NewPipe(fmt.Sprintf("malloc://%d", config.Memsize))
 	if err != nil {
 		panic(err)
 	}
-	log.Println("[+] Memoy successfully allocated \\o/")
+
+	logrus.Info("Memoy successfully allocated")
 
 	// define the architecture and the bitness
 	_ = r2cmd(r2p, fmt.Sprintf("e asm.arch = %s", config.Arch))
