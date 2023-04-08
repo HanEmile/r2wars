@@ -1,14 +1,140 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
-	r2pipe "github.com/radare/r2pipe-go"
+	"github.com/radareorg/r2pipe-go"
 	"github.com/sirupsen/logrus"
 )
+
+// Config defines the meta config
+type Config struct {
+
+	// Arch defines the architecture the battle should run in
+	Arch string
+
+	// Bits defines the bitness
+	Bits int
+
+	// Memsize defines the arena size
+	Memsize int
+
+	// MaxProgSize defines the maximal bot size
+	MaxProgSize int
+
+	// Bots defines a list of bots to take part in the battle
+	Bots []Bot
+
+	// AmountOfBots defines the amount of bots taking part in the tournament
+	AmountOfBots int
+
+	// RandomOffsets defines the offset in memory where the bots should be placed
+	RandomOffsets []int
+
+	// GameRoundTime defines the length of a gameround
+	GameRoundDuration time.Duration
+}
+
+// Bot defines a bot
+type Bot struct {
+
+	// Path defines the path to the source of the bot
+	Path string
+
+	// Source defines the source of the bot after being compiled with rasm2
+	Source string
+
+	// Addr defines the initial address the bot is placed at
+	Addr int
+
+	// Regs defines the state of the registers of the bot
+	// It is used to store the registers after each round and restore them in the
+	// next round when the bot's turn has come
+	Regs string
+}
+
+func parseConfig() Config {
+	arch := flag.String("arch", "x86", "bot architecture (mips|arm|x86)")
+	bits := flag.Int("bits", 32, "bot bitness (8|16|32|64)")
+	maxProgSize := flag.Int("maxProgSize", 64, "the maximum bot size")
+	memPerBot := flag.Int("memPerBot", 512, "the amount of memory each bot should add to the arena")
+	gameRoundDuration := flag.Duration("t", 250*time.Millisecond, "The duration of a round")
+
+	v := flag.Bool("v", false, "info")
+	vv := flag.Bool("vv", false, "debug")
+	vvv := flag.Bool("vvv", false, "trace")
+
+	flag.Parse()
+
+	if *v == true {
+		logrus.SetLevel(logrus.InfoLevel)
+	} else if *vv == true {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else if *vvv == true {
+		logrus.SetLevel(logrus.TraceLevel)
+	} else {
+		logrus.SetLevel(logrus.WarnLevel)
+	}
+
+	// parse all trailing command line arguments as path to bot sourcecode
+	amountOfBots := flag.NArg()
+
+	memsize := amountOfBots * *memPerBot
+
+	logrus.WithFields(logrus.Fields{
+		"mem per bot":  *memPerBot,
+		"amountOfBots": amountOfBots,
+		"memsize":      memsize,
+	}).Infof("Loaded config")
+
+	// define a config to return
+	config := Config{
+		Arch:              *arch,
+		Bits:              *bits,
+		Memsize:           memsize,
+		MaxProgSize:       *maxProgSize,
+		AmountOfBots:      amountOfBots,
+		GameRoundDuration: *gameRoundDuration,
+	}
+
+	return config
+}
+
+// define bots defines the bots given via command line arguments
+func defineBots(config *Config) {
+
+	logrus.Info("Defining the bots")
+
+	// define a list of bots by parsing the command line arguments one by one
+	var bots []Bot
+	for i := 0; i < config.AmountOfBots; i++ {
+		bot := Bot{
+			Path: flag.Arg(i),
+		}
+		bots = append(bots, bot)
+	}
+
+	config.Bots = bots
+}
+
+func r2cmd(r2p *r2pipe.Pipe, input string) string {
+
+	logrus.Tracef("> %s", input)
+
+	// send a command
+	buf1, err := r2p.Cmd(input)
+	if err != nil {
+		panic(err)
+	}
+
+	// return the result of the command as a string
+	return buf1
+}
 
 func buildBots(config *Config) {
 
@@ -227,4 +353,111 @@ func defineErrors(r2p *r2pipe.Pipe) {
 	_ = r2cmd(r2p, "e cmd.esil.intr=f theend=1")
 	_ = r2cmd(r2p, "e cmd.esil.ioer=f theend=1")
 	_ = r2cmd(r2p, "f theend=0")
+}
+
+// StepIn steps in and stores the state of the registers for the given bot
+func stepIn(r2p *r2pipe.Pipe) {
+	_ = r2cmd(r2p, "aes")
+}
+
+// switchPlayer returns the id of the next Player
+func switchPlayer(r2p *r2pipe.Pipe, currentPlayer int, config *Config) int {
+
+	// calculate the index of the nextPlayer
+	nextPlayer := (currentPlayer + 1) % config.AmountOfBots
+
+	return nextPlayer
+}
+
+func arena(r2p *r2pipe.Pipe, config *Config, id, gen int) string {
+	var res string = ""
+
+	// clear the screen
+	res += "\x1b[2J\x1b[0;0H"
+	// res += fmt.Sprintf("%s\n", r2cmd(r2p, "?eg 0 0"))
+
+	// print some general information such as the current user and the round the
+	// game is in
+	ip := fmt.Sprintf("%s\n", r2cmd(r2p, "aer~eip"))
+	res += fmt.Sprintf("Round: %d \t\t User: %d \t\t ip: %s\n", gen, id, ip)
+
+	// print the memory space
+	res += fmt.Sprintf("%s\n", r2cmd(r2p, "pxa 0x400 @ 0"))
+	// res += fmt.Sprintf("%s\n", r2cmd(r2p, fmt.Sprintf("pd 0x10 @ %d", config.Bots[id].Addr)))
+
+	// res += fmt.Sprintf("%s\n", r2cmd(r2p, "prc 0x200 @ 0"))
+
+	return res
+}
+
+// runGame actually runs the game (surprise!)
+func runGame(r2p *r2pipe.Pipe, config *Config) {
+
+	// start the competition
+	var botid int = 0
+	var round int = 0
+	for true {
+
+		// load the registers
+		r2cmd(r2p, config.Bots[botid].Regs)
+
+		// Step
+		stepIn(r2p)
+
+		// store the regisers
+		registers := r2cmd(r2p, "aerR")
+		registersStripped := strings.Replace(registers, "\n", ";", -1)
+		config.Bots[botid].Regs = registersStripped
+
+		logrus.Info(arena(r2p, config, botid, round))
+
+		if dead(r2p, botid) == true {
+			logrus.Warnf("DEAD (round %d)", round)
+			os.Exit(1)
+		}
+
+		// switch players, if the new botid is 0, a new round has begun
+		botid = switchPlayer(r2p, botid, config)
+		if botid == 0 {
+			round++
+		}
+
+		// sleep only a partial of the total round time, as a round is made up of
+		// the movements of multiple bots
+		time.Sleep(config.GameRoundDuration / time.Duration(config.AmountOfBots))
+	}
+}
+
+func dead(r2p *r2pipe.Pipe, botid int) bool {
+	status := r2cmd(r2p, "?v 1+theend")
+
+	if status != "" && status != "0x1" {
+		logrus.Warn("[!] Bot %d has died", botid)
+		return true
+	}
+	return false
+}
+
+func main() {
+	fmt.Println("hi")
+
+	config := parseConfig()
+	defineBots(&config)
+	buildBots(&config)
+	genRandomOffsets(&config)
+
+	// initialize the arena (allocate memory + initialize the ESIL VM & stack)
+	r2p := initArena(&config)
+
+	// place the bots in the arena
+	placeBots(r2p, &config)
+
+	// if an error occurs (interrupt, ioerror, trap, ...), the ESIL VM should set
+	// a flag that can be used to determine if a player has died
+	defineErrors(r2p)
+
+	// run the actual game
+	runGame(r2p, &config)
+
+	r2p.Close()
 }
