@@ -432,7 +432,7 @@ func dead(r2p *r2pipe.Pipe, botid int) bool {
 	status := r2cmd(r2p, "?v 1+theend")
 
 	if status != "" && status != "0x1" {
-		logrus.Warn("[!] Bot %d has died", botid)
+		logrus.Warnf("[!] Bot %d has died", botid)
 		return true
 	}
 	return false
