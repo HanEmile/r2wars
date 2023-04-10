@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/heap"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -213,80 +214,77 @@ func initArena(config *Config) *r2pipe.Pipe {
 	return r2p
 }
 
+// a heap of integers (adapted from the container/heap documentation)
+type IntHeap []int
+
+func (h IntHeap) Len() int		{ return len(h) }
+func (h IntHeap) Less(i, j int) bool	{ return h[i] < h[j] }
+func (h IntHeap) Swap(i, j int)		{ h[i], h[j] = h[j], h[i] }
+
+func (h *IntHeap) Push(x any) {
+	*h = append(*h, x.(int))
+}
+
+func (h *IntHeap) Pop() any {
+	n := len(*h)
+	x := (*h)[n - 1]
+	*h = (*h)[0 : n - 1]
+	return x
+}
+
 // genRandomOffsets returns random offsets for all bots
 // This is used to get the offset the bots are initially placed in
 func genRandomOffsets(config *Config) {
 
 	logrus.Info("Generating random bot offsets")
 
-	// define the amount of bots, an array to store the offsets in and a counter
-	// to store the amount of tries it took to find a random positon for the bots
-	var amountOfBots int = len(config.Bots)
-	var offsets []int
-	var roundCounter int = 0
-
 	// seed the random number generator
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	for {
+	nbots := len(config.Bots)
 
-		// reset the offsets array
-		offsets = []int{}
+	// calculate final occupied and remaining free space
+	needed := 0
+	for i := 0; i < nbots; i++ {
+		needed += len(config.Bots[i].Code)
+	}
+	if needed > config.Memsize {
+		panic("total bot size exceeds available memory")
+	}
+	free := config.Memsize - needed
 
-		// define a random address
-		// | ------------------------------------- | ----- |
-		// | generate an address in this space
-		address := rand.Intn(config.Memsize - config.MaxProgSize)
-		logrus.Tracef("%d", address)
-
-		// for all bots, try to generate another random address after the intially
-		// generated address and test if it fits in memory
-		for i := 0; i < amountOfBots; i++ {
-
-			// append the address to the offsets array
-			offsets = append(offsets, address)
-
-			// define a min and max bound
-			//
-			// | ------|-|----------------------------------|-|
-			// |       | |           in this space          | |
-			// a       b c                                  d e
-			//
-			// a = 0x0
-			// b = address
-			// c = address + config.MaxProcSize (min)
-			// d = config.Memsize - config.MaxProgSize (max)
-			// e = config.Memsize
-			min := address + config.MaxProgSize
-			max := config.Memsize - config.MaxProgSize
-
-			// if the new minimum bound is bigger or equal to the maximum bound,
-			// discard this try and start with a fresh new initial address
-			if min >= max {
-				roundCounter++
-				break
-			}
-
-			// generate a new address in the [min, max) range defined above
-			address = rand.Intn(max-min) + min
-			logrus.Tracef("%d", address)
-
-			// If there isn't enough space inbetween the address and the biggest
-			// possible address, as in, the biggest possible bot can't fit in that
-			// space, discard and start with a new fresh initial address
-			if (config.Memsize-config.MaxProgSize)-address < config.MaxProgSize {
-				roundCounter++
-				break
-			}
-		}
-
-		// if the needed amount of offsets has been found, break out of the infinite loop
-		if len(offsets) == amountOfBots {
-			break
-		}
+	// pick nbots random places among chunks of free memory.
+	// we consider as possible places the spaces between individual free
+	// bytes of memory and pick one uniformly at random for each bot.
+	// the results are stored in a heap so we can easily go through them
+	// from first to last later.
+	// it is okay to pick the same place multiple times, which just means
+	// that the corresponding bots will be adjacent.
+	places := &IntHeap{}
+	for i := 0; i < nbots; i++ {
+		// there are free + 1 possible places, one in front of each
+		// free byte, plus one after the last.
+		heap.Push(places, rand.Intn(free + 1))
 	}
 
-	logrus.Infof("Initial bot positions found after %d tries", roundCounter)
+	// randomly choose the order in which the bots should appear
+	perm := rand.Perm(nbots)
+
+	// calculate the resulting bot offsets
+	offsets := make([]int, nbots)
+	occupied := 0;				// space allocated so far
+	for i := 0; i < nbots; i++ {
+		bot := perm[i]
+		size := len(config.Bots[bot].Code)
+		place := heap.Pop(places).(int)
+
+		offsets[bot] = place + occupied
+		if offsets[bot] + size > config.Memsize {
+			panic("BUG: bot placed out of bounds")
+		}
+
+		occupied += size
+	}
 
 	// debug print all offsets
 	var fields0 logrus.Fields = make(logrus.Fields)
@@ -294,18 +292,6 @@ func genRandomOffsets(config *Config) {
 		fields0[fmt.Sprintf("%d", i)] = offsets[i]
 	}
 	logrus.WithFields(fields0).Debug("Offsets")
-
-	// shuffle the offsets
-	rand.Shuffle(len(offsets), func(i, j int) {
-		offsets[i], offsets[j] = offsets[j], offsets[i]
-	})
-
-	// debug print the shuffled offsets
-	var fields1 logrus.Fields = make(logrus.Fields)
-	for i := 0; i < len(offsets); i++ {
-		fields1[fmt.Sprintf("%d", i)] = offsets[i]
-	}
-	logrus.WithFields(fields1).Debug("Shuffled offsets")
 
 	config.RandomOffsets = offsets
 }
