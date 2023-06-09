@@ -35,6 +35,7 @@
           go-hello = pkgs.buildGoModule {
             pname = "r2wars";
             inherit version;
+            buildInputs = with pkgs; [ radare2 ];
             # In 'nix develop', we don't need a copy of the source tree
             # in the Nix store.
             src = ./.;
