@@ -181,7 +181,7 @@ func initArena(config *Config) *r2pipe.Pipe {
 		panic(err)
 	}
 
-	logrus.Info("Memoy successfully allocated")
+	logrus.Info("Memory successfully allocated")
 
 	// define the architecture and the bitness
 	_ = r2cmd(r2p, fmt.Sprintf("e asm.arch = %s", config.Arch))
