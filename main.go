@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -438,8 +439,27 @@ func dead(r2p *r2pipe.Pipe, botid int) bool {
 	return false
 }
 
+// The Windows terminal doesn't render ANSI escape codes by default,
+// but at least, it supports opting in since Windows 10 1709.
+// We could use windigo to call kernel32.SetConsoleMode, but this still
+// wouldn't be enough as logrus seems to escape them. But if we force logrus to
+// use color, it seems to call this function for us. :)
+// see https://learn.microsoft.com/en-us/windows/console/setconsolemode
+// see https://superuser.com/a/1300251/329759
+func forceColor() {
+	logrus.Infof("Running on Windows; forcing color")
+	// make logrus use color
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors: true,
+		FullTimestamp: false,
+	})
+}
+
 func main() {
-	fmt.Println("hi")
+	if runtime.GOOS == "windows" {
+		forceColor()
+	}
+	fmt.Println("\x1b[33mhi\x1b[0m")
 
 	config := parseConfig()
 	defineBots(&config)
