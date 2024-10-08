@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -429,17 +430,40 @@ func runGame(r2p *r2pipe.Pipe, config *Config) {
 }
 
 func dead(r2p *r2pipe.Pipe, botid int) bool {
-	status := r2cmd(r2p, "?v 1+theend")
+	status := strings.TrimSpace(r2cmd(r2p, "?v theend"))
+	// fixme: on Windows, we sometimes get output *from other calls to r2*
 
-	if status != "" && status != "0x1" {
+	if status == "0x1" {
 		logrus.Warnf("[!] Bot %d has died", botid)
 		return true
+	}
+	if status != "0x0" {
+		logrus.Warnf("[!] Got invalid status '%s' for bot %d", status, botid)
 	}
 	return false
 }
 
+// The Windows terminal doesn't render ANSI escape codes by default,
+// but at least, it supports opting in since Windows 10 1709.
+// We could use windigo to call kernel32.SetConsoleMode, but this still
+// wouldn't be enough as logrus seems to escape them. But if we force logrus to
+// use color, it seems to call this function for us. :)
+// see https://learn.microsoft.com/en-us/windows/console/setconsolemode
+// see https://superuser.com/a/1300251/329759
+func forceColor() {
+	logrus.Infof("Running on Windows; forcing color")
+	// make logrus use color
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors: true,
+		FullTimestamp: false,
+	})
+}
+
 func main() {
-	fmt.Println("hi")
+	if runtime.GOOS == "windows" {
+		forceColor()
+	}
+	fmt.Println("\x1b[33mhi\x1b[0m")
 
 	config := parseConfig()
 	defineBots(&config)
